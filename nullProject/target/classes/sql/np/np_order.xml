@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edu.order">
+
+	<sql id="search">
+		<choose>
+			<when test="searchOption == 'orderDate'">
+				WHERE  MEM.MEMBER_NAME LIKE '%'||#{keyword}||'%'
+			</when>	
+			<otherwise>
+				WHERE  ${searchOption} LIKE '%'||#{keyword}||'%'
+			</otherwise>
+		</choose>
+	</sql>
+
+	<resultMap type="orderDto" id="orderResultMap">
+		<id column = "ORDER_NO"                     			property="orderNo"/>
+		<result column = "MEMBER_NO        "                    property="memberNo"/>
+		<result column = "ORDER_DATE       "                    property="orderDate"
+											  javaType="java.util.Date"/>    
+		<result column = "ORDER_PRICE      "                    property="cartTotalPriceCal"/>
+		<result column = "ORDER_MEMBERNAME   "                  property="orderMemberName"/>
+		<result column = "ORDER_EMAIL      "                    property="orderEmail"/>
+		<result column = "ORDER_PHONE      "                    property="orderPhone"/>
+		<result column = "ORDER_ADDRESS    "                    property="orderAddress"/>
+		<result column = "ORDER_REQUIREMENT"                    property="orderRequirement"/>
+		<result column = "ORDER_CATEGORY   "                    property="orderCategory"/>
+		<result column = "ORDER_STATE      "                    property="orderState"/>
+	</resultMap>
+	
+	<resultMap type="orderListDto" id="orderListResultMap">
+		<id column = "CART_PRODUCTNO"                     property="cartProductNo"/>
+		<result column = "CART_COUNT"                     property="cartCount"/>
+		<result column = "PRODUCT_NAME"                     property="productName"/>
+		<result column = "PRODUCT_PRICE"                     property="productPrice"/>
+		<result column = "CART_MEMBERNO"                     property="cartMemberNo"/>
+	</resultMap>
+	
+	<insert id="cartToOrderList" parameterType="int">
+		INSERT INTO NULLPROJECT_ORDERLIST
+		SELECT CAR.CART_PRODUCTNO, CAR.CART_COUNT, CAR.PRODUCT_NAME, ORD.ORDER_NO, CAR.PRODUCT_PRICE
+		FROM 
+		        (SELECT ORDER_NO, MEMBER_NO
+		        FROM(SELECT ORDER_NO, MEMBER_NO
+		            FROM NULLPROJECT_ORDER
+		            WHERE MEMBER_NO = #{memberNo}
+		            ORDER BY ORDER_DATE DESC)
+		        WHERE ROWNUM = 1) ORD
+		JOIN
+		        (SELECT CART.CART_PRODUCTNO, CART.CART_COUNT, PD.PRODUCT_NAME, PD.PRODUCT_PRICE, 
+		        CART.CART_MEMBERNO
+		        FROM NULLPROJECT_CART CART JOIN NULLPROJECT_PRODUCT PD
+		        ON CART.CART_PRODUCTNO = PD.PRODUCT_NO
+		        WHERE CART.CART_MEMBERNO = #{memberNo}) CAR
+		ON ORD.MEMBER_NO = CAR.CART_MEMBERNO
+	</insert>
+	
+	<delete id="cartDelete" >
+		DELETE FROM NULLPROJECT_CART
+		WHERE CART_MEMBERNO = #{memberNo}
+	</delete>
+	
+	<update id="memberCashUpdate" parameterType="map">
+		UPDATE NULLPROJECT_MEMBER
+		SET MEMBER_CASH =  MEMBER_CASH - #{cartTotalPriceCal}
+		WHERE MEMBER_NO = #{memberNo}
+	</update>
+	
+	<update id="productCountUpdate" parameterType="map">
+		UPDATE NULLPROJECT_PRODUCT
+		SET PRODUCT_STOCK = PRODUCT_STOCK - #{cartProductCount},
+			PRODUCT_SALSEVOLUME = PRODUCT_SALSEVOLUME + #{cartProductCount}
+		WHERE PRODUCT_NO = #{productNo}	
+	</update>
+	
+	
+	
+	<select id="cartSelectOne" parameterType="int" resultMap="orderListResultMap">
+		SELECT CART.CART_MEMBERNO, CART.CART_PRODUCTNO, CART.CART_COUNT, PD.PRODUCT_NAME, PD.PRODUCT_PRICE, 
+		FROM NULLPROJECT_CART CART JOIN NULLPROJECT_PRODUCT PD
+        ON CART.CART_PRODUCTNO = PD.PRODUCT_NO
+        WHERE CART.CART_MEMBERNO = #{memberNo}
+	</select>
+	
+	
+	<select id="orderSelectOne" parameterType="int" resultMap="orderResultMap">
+		SELECT OD.ORDER_NO, OD.ORDER_DATE, OD.ORDER_PRICE, od.order_customer, od.order_PHONE, od.order_ADDRESS, mem.MEMBER_ADMIN
+			FROM NULLPROJECT_ORDER OD JOIN NULLPROJECT_ORDERLIST OL
+			ON OD.ORDERLIST_IDX = OL.ORDERLIST_IDX
+			JOIN NULLPROJECT_MEMBER MEM
+			ON OD.MEMBER_NO = MEM.MEMBER_NO
+			WHERE MEM.MEMBER_NO = #{memberNo}
+	</select>
+	
+	<select id="orderSelectList" parameterType="map"    resultMap="orderResultMap">
+<!-- 		SELECT NO, MNAME, EMAIL, CRE_DATE -->
+<!-- 		FROM MEMBERS -->
+<!-- 		ORDER BY NO DESC -->
+		
+		SELECT
+		    *
+		FROM(
+	        SELECT
+	            ROWNUM RNUM,M.*
+	        FROM(
+		            SELECT OD.ORDER_NO, OD.ORDER_DATE, OD.ORDER_PRICE, MEM.MEMBER_NAME, OD.ORDER_PHONE, OD.ORDER_ADDRESS
+					FROM NULLPROJECT_ORDER OD JOIN NULLPROJECT_ORDERLIST OL
+					ON OD.ORDERLIST_IDX = OL.ORDERLIST_IDX
+					JOIN NULLPROJECT_MEMBER MEM
+					ON OD.MEMBER_NO = MEM.MEMBER_NO
+		        	<include refid="search"></include>
+		       		ORDER BY MEMBER_CRE_DATE DESC)M
+		   		)NULLPROJECT_MEMBER
+		   		WHERE RNUM BETWEEN #{start} AND #{end}
+	</select>
+	
+	<select id="orderSelectTotalCount" parameterType="map" resultType="java.lang.Integer">
+		SELECT  COUNT(*)
+		FROM NULLPROJECT_ORDER
+		<include refid="search"></include>
+	</select>
+	
+	<select id="otherCount">
+		SELECT COUNT(*) AS OTHERCOUNT
+		FROM NULLPROJECT_ORDERLIST OL JOIN NULLPROJECT_PRODUCT PR
+		ON OL.PRODUCT_NO = PR.PRODUCT_NO
+		GROUP BY OL.ORDERLIST_NO
+		HAVING OL.ORDERLIST_NO = ${orderListNo}
+	</select>
+	
+	<select id="firstProductName">
+		SELECT ROWNUM, PR.PRODUCT_NAME AS FIRSTPRODUCTNAME
+		FROM NULLPROJECT_ORDERLIST OL JOIN NULLPROJECT_PRODUCT PR
+		ON OL.PRODUCT_NO = PR.PRODUCT_NO
+		WHERE OL.ORDERLIST_NO = ${orderListNo} AND ROWNUM = 1
+	</select>
+	
+	<insert id="orderInsertOne" parameterType="orderDto">
+		INSERT INTO NULLPROJECT_ORDER(
+		 ORDER_NO
+		,MEMBER_NO
+		,ORDER_DATE
+		,ORDER_PRICE
+		,ORDER_MEMBERNAME
+		,ORDER_EMAIL
+		,ORDER_PHONE
+		,ORDER_ADDRESS
+		,ORDER_REQUIREMENT
+		,ORDER_CATEGORY
+		,ORDER_STATE
+		) 
+		VALUES 
+		(
+		SEQ_NULLPROJECT_ORDER_NO.NEXTVAL
+		,#{memberNo}
+		,SYSDATE
+		,#{cartTotalPriceCal}
+		,#{orderMemberName}
+		,#{orderEmail}
+		,#{orderPhone}
+		,#{orderAddress}
+		,#{orderRequirement, jdbcType=VARCHAR}
+		,'o'
+		,'1'
+		)
+	</insert>
+	
+	<select id="productCountSelectOne" parameterType="int" resultMap="orderListResultMap" >
+		SELECT CART_COUNT, CART_PRODUCTNO
+		FROM NULLPROJECT_CART
+		WHERE CART_NO = {cartNo};
+	</select>
+
+	
+	
+	
+</mapper>

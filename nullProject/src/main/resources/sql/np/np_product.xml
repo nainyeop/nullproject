@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edu.product">
+
+	<sql id="search">
+		<choose>
+			<when test="searchOption == 'productName'">
+				WHERE PRODUCT_STATE = 1 AND PRODUCT_NAME LIKE '%'||#{keyword}||'%'
+			</when>
+		</choose>
+	</sql>
+	
+	<resultMap type="productDto" id="productResultMap">
+		<id column="PRODUCT_NO"					property="productNo" />
+		<result column="PRODUCT_NAME" 			property="productName" />
+		<result column="PRODUCT_PRICE" 			property="productPrice" />
+		<result column="PRODUCT_COSTPRICE" 		property="productCostprice" />
+		<result column="PRODUCT_STOCK" 			property="productStock" />
+		<result column="PRODUCT_SALSEVOLUME"	property="productSalseVolume" />
+		<result column="PRODUCT_DETAIL" 		property="productDetail" />
+		<result column="PRODUCT_CRE_DATE" 		property="productCreDate"
+			javaType="java.util.Date" />
+		<result column="PRODUCT_MOD_DATE" 		property="productModDate"
+			javaType="java.util.Date" />
+		<result column="PRODUCT_CATEGORY" 		property="productCategory" />
+		<result column="PRODUCT_STATE" 			property="productState" />
+		<result column="IMG_IDX" 			property="imgIdx" />
+		<result column="IMG_STORED_FILENAME" 	property="storedFileName" />
+		<result column="IMG_ORIGINAL_FILENAME" 	property="originalFileName"/>
+	</resultMap>
+	
+	<resultMap type="fileDto" id="fileResultMap">
+		<id column="IMG_IDX" 					property="imgIdx" />
+		<result column="IMG_ORIGINAL_FILENAME" 	property="originalFileName" />
+		<result column="IMG_STORED_FILENAME" 	property="storedFileName" />
+		<result column="IMG_FILESIZE" 			property="fileSize" />
+		<result column="IMG_CREDATE" 			property="imgCreDate" 
+				javaType="java.util.Date" />
+		<result column="PRODUCT_NO" 			property="imgProductNo" />
+	</resultMap>
+	
+	
+
+	<!-- 상품 목록 -->
+	<select id="productSelectList" parameterType="map"
+		resultMap="productResultMap">
+		
+		SELECT PRODUCT_NO, PRODUCT_NAME, PRODUCT_PRICE, PRODUCT_STOCK, IMG_STORED_FILENAME, PRODUCT_STATE
+        FROM(
+             SELECT ROWNUM RNUM, PR.PRODUCT_NO, PR.PRODUCT_NAME, PR.PRODUCT_PRICE, PR.PRODUCT_COSTPRICE,
+                    PR.PRODUCT_STOCK, PR.PRODUCT_SALSEVOLUME, PR.PRODUCT_DETAIL, PR.PRODUCT_CRE_DATE,
+                    PR.PRODUCT_MOD_DATE, PR.PRODUCT_CATEGORY, PR.PRODUCT_STATE, PR.IMG_STORED_FILENAME
+             FROM(
+                  SELECT PD.PRODUCT_NO, PD.PRODUCT_NAME, PD.PRODUCT_PRICE, PD.PRODUCT_COSTPRICE,
+                         PD.PRODUCT_STOCK, PD.PRODUCT_SALSEVOLUME, PD.PRODUCT_DETAIL, PD.PRODUCT_CRE_DATE,
+                         PD.PRODUCT_MOD_DATE, PD.PRODUCT_CATEGORY, PD.PRODUCT_STATE, IMG.IMG_STORED_FILENAME
+                  FROM NULLPROJECT_PRODUCT PD JOIN NULLPROJECT_IMG IMG
+                  ON PD.PRODUCT_NO = IMG.PRODUCT_NO(+)
+                  <include refid="search"></include>
+                  ORDER BY PRODUCT_SALSEVOLUME DESC, PRODUCT_NAME ASC)
+             PR)
+        WHERE PRODUCT_STATE = 1 AND RNUM BETWEEN #{start} AND #{end}
+		
+	</select>
+
+	<!-- 상품 추가 -->
+	<insert id="productInsertOne"
+		parameterType="com.edu.product.model.ProductDto"
+		useGeneratedKeys="true" keyProperty="productNo">
+		<selectKey keyProperty="productNo" resultType="int"
+			order="BEFORE">
+			SELECT
+			SEQ_NULLPROJECT_PRODUCT_NO.NEXTVAL FROM DUAL
+		</selectKey>
+
+		INSERT INTO NULLPROJECT_PRODUCT(
+		PRODUCT_NO,
+		PRODUCT_NAME, PRODUCT_PRICE, PRODUCT_COSTPRICE,
+		PRODUCT_STOCK, PRODUCT_SALSEVOLUME,
+		PRODUCT_DETAIL, PRODUCT_CRE_DATE,
+		PRODUCT_MOD_DATE, PRODUCT_CATEGORY,
+		PRODUCT_STATE
+		)
+		VALUES(
+		#{productNo},
+		#{productName}, #{productPrice},
+		#{productCostprice},
+		#{productStock}, #{productSalseVolume}, #{productDetail}, SYSDATE,
+		SYSDATE, 'p', 1
+		)
+
+	</insert>
+
+	<select id="productTotalCount" parameterType="map" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM NULLPROJECT_PRODUCT
+		<include refid="search"></include>
+	</select>
+
+
+	<!-- file추가 -->
+	<insert id="insertFile" parameterType="map">
+		INSERT INTO
+		NULLPROJECT_IMG
+		VALUE (IMG_IDX, PRODUCT_NO, IMG_ORIGINAL_FILENAME,
+		IMG_STORED_FILENAME, IMG_FILESIZE, IMG_CREDATE)
+		VALUES
+		(SEQ_NULLPROJECT_IMG_IDX.NEXTVAL, #{parentSeq}, #{original_file_name},
+		#{stored_file_name}, #{file_size}, SYSDATE)
+	</insert>
+
+	<select id="fileSelectList" parameterType="int" resultType="map">
+		SELECT IMG_IDX, IMG_ORIGINAL_FILENAME, IMG_STORED_FILENAME,
+		ROUND(IMG_FILESIZE / 1024, 1) AS IMG_FILESIZE
+		FROM NULLPROJECT_IMG
+		WHERE PRODUCT_NO = #{parentSeq}
+	</select>
+
+	<update id="fileUpdateOne" parameterType="map">
+		UPDATE NULLPROJECT_IMG
+		SET	IMG_ORIGINAL_FILENAME = #{original_file_name}, IMG_STORED_FILENAME = #{stored_file_name}, IMG_FILESIZE = #{file_size}
+		WHERE PRODUCT_NO = #{parentSeq}	</update>
+
+	<delete id="fileDelete" parameterType="int">
+		DELETE FROM
+		NULLPROJECT_IMG
+		WHERE PRODUCT_NO = #{parentSeq}	</delete>
+
+	<select id="fileSelectStoredFileName" parameterType="int"
+		resultMap="fileResultMap">
+		SELECT IMG_IDX, IMG_STORED_FILENAME, IMG_ORIGINAL_FILENAME
+		FROM NULLPROJECT_IMG
+		WHERE PRODUCT_NO = #{parentSeq}
+	</select>
+
+	<select id="productSelectOne" parameterType="int" resultMap="productResultMap">
+		SELECT PD.PRODUCT_NO as PRODUCT_NO, PD.PRODUCT_NAME as PRODUCT_NAME, PD.PRODUCT_PRICE as PRODUCT_PRICE, PD.PRODUCT_COSTPRICE as PRODUCT_COSTPRICE, IMG.IMG_IDX,
+   	  		   PD.PRODUCT_STOCK as PRODUCT_STOCK, PD.PRODUCT_DETAIL as PRODUCT_DETAIL, IMG.IMG_ORIGINAL_FILENAME as IMG_ORIGINAL_FILENAME, IMG.IMG_STORED_FILENAME as IMG_STORED_FILENAME
+		FROM NULLPROJECT_PRODUCT PD JOIN NULLPROJECT_IMG IMG
+        ON PD.PRODUCT_NO = IMG.PRODUCT_NO(+)
+		WHERE PRODUCT_STATE = 1 AND PD.PRODUCT_NO = #{productNo}
+	</select>
+	
+	<update id="productUpdateOne" parameterType="productDto">
+		UPDATE NULLPROJECT_PRODUCT
+		<set>
+			<if test="productName != ''">PRODUCT_NAME = #{productName},</if>
+			<if test="productPrice != ''">PRODUCT_PRICE = #{productPrice},</if> 
+			<if test="productCostprice != ''">PRODUCT_COSTPRICE = #{productCostprice},</if> 
+			<if test="productStock != ''">PRODUCT_STOCK = #{productStock},</if> 
+			<if test="storedFileName != ''">IMG_STORED_FILENAME = #{storedFileName},</if> 
+			<if test="productDetail != ''">PRODUCT_DETAIL = #{productDetail},</if> 
+			PRODUCT_MOD_DATE = SYSDATE
+		</set>
+<!-- 		SET -->
+<!-- 			PRODUCT_NAME = #{productName},     -->
+<!-- 			PRODUCT_PRICE = #{productPrice},  -->
+<!-- 			PRODUCT_COSTPRICE = #{productCostprice}, -->
+<!-- 			PRODUCT_STOCK = #{productStock},  -->
+<!-- 			PRODUCT_DETAIL = #{productDetail}, -->
+<!-- 			PRODUCT_MOD_DATE = SYSDATE -->
+		WHERE PRODUCT_NO = #{productNo}
+	</update>
+
+	<update id="productDeleteCtr" parameterType="int">
+		UPDATE NULLPROJECT_PRODUCT
+		SET PRODUCT_STATE = 0
+		WHERE PRODUCT_NO = #{productNo}
+	</update>
+	
+
+
+</mapper>

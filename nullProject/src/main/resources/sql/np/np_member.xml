@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edu.member">
+
+	<sql id="search">
+		<choose>
+			<when test="searchOption == 'all'">
+				WHERE MEMBER_NAME LIKE '%'||#{keyword}||'%'
+				OR MEMBER_EMAIL LIKE '%'||#{keyword}||'%'
+			</when>	
+			<otherwise>
+				WHERE ${searchOption} LIKE '%'||#{keyword}||'%'
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<resultMap type="memberDto" id="memberResultMap">
+		<id column = "MEMBER_NO"                     property="memberNo"/>
+		<result column = "MEMBER_NAME"                     property="memberName"/>
+		<result column = "MEMBER_EMAIL"                     property="memberEmail"/>
+		<result column = "MEMBER_PASSWORD"                     property="memberPassword"/>
+		<result column = "MEMBER_PHONE"                     property="memberPhone"/>
+		<result column = "MEMBER_ADDRESS"                     property="memberAddress"/>
+		<result column = "MEMBER_CASH"                     property="memberCash"/>
+		<result column = "MEMBER_ADMIN"                     property="memberAdmin"/>
+		<result column = "MEMBER_CATEGORY"                     property="memberCategory"/>
+		<result column = "MEMBER_STATE"                     property="memberState"/>
+		<result column = "MEMBER_CRE_DATE"                     property="memberCreateDate"
+												javaType="java.util.Date"/>
+		<result column = "MEMBER_MOD_DATE"                     property="memberModifiedDate"
+												javaType="java.util.Date"/>
+	</resultMap>
+
+	<select id="memberSelectList" parameterType="map"    resultMap="memberResultMap">
+<!-- 		SELECT NO, MNAME, EMAIL, CRE_DATE -->
+<!-- 		FROM MEMBERS -->
+<!-- 		ORDER BY NO DESC -->
+		
+		SELECT MEMBER_NO, MEMBER_NAME, MEMBER_EMAIL, MEMBER_PASSWORD, MEMBER_CRE_DATE,MEMBER_PHONE,MEMBER_ADDRESS,MEMBER_CASH,MEMBER_ADMIN,MEMBER_CATEGORY,MEMBER_STATE
+		FROM(
+			SELECT ROWNUM RNUM, M.MEMBER_NO, M.MEMBER_NAME, M.MEMBER_EMAIL, M.MEMBER_PASSWORD, M.MEMBER_CRE_DATE,MEMBER_PHONE,MEMBER_ADDRESS,MEMBER_CASH,MEMBER_ADMIN,MEMBER_CATEGORY,MEMBER_STATE
+			FROM (
+        		SELECT  MEMBER_NO, MEMBER_NAME, MEMBER_EMAIL, MEMBER_PASSWORD, MEMBER_CRE_DATE,MEMBER_PHONE,MEMBER_ADDRESS,MEMBER_CASH,MEMBER_ADMIN,MEMBER_CATEGORY,MEMBER_STATE
+        		FROM NULLPROJECT_MEMBER
+        		<include refid="search"></include>
+       			ORDER BY MEMBER_CRE_DATE DESC)M
+   			)NULLPROJECT_MEMBER
+   		WHERE RNUM BETWEEN #{start} AND #{end}
+	</select>
+	
+<!-- 	로그인 -->
+	<select id="memberExistOne" parameterType="map" resultMap="memberResultMap">
+		SELECT MEMBER_NO, MEMBER_NAME, MEMBER_EMAIL, MEMBER_ADMIN, MEMBER_CASH
+		FROM NULLPROJECT_MEMBER
+		WHERE MEMBER_EMAIL = #{memberEmail,jdbcType=VARCHAR} AND MEMBER_PASSWORD = #{memberPwd,jdbcType=VARCHAR}
+
+	</select>
+	
+<!-- 	이메일찾기 -->
+	<select id="memberExistTwo" parameterType="map" resultMap="memberResultMap">
+		SELECT MEMBER_EMAIL
+		FROM NULLPROJECT_MEMBER
+		WHERE MEMBER_NAME = #{memberName,jdbcType=VARCHAR} AND MEMBER_PHONE = #{memberPhone,jdbcType=VARCHAR}
+
+	</select>
+	
+<!-- 	비밀번호 찾기 -->
+	<select id="memberExistTree" parameterType="map" resultMap="memberResultMap">
+		SELECT MEMBER_PASSWORD
+		FROM NULLPROJECT_MEMBER
+		WHERE MEMBER_EMAIL = #{memberEmail,jdbcType=VARCHAR} AND MEMBER_PHONE = #{memberPhone,jdbcType=VARCHAR}
+
+	</select>
+	
+	<update id="memberPwdUpadate" parameterType="memberDto">
+		UPDATE NULLPROJECT_MEMBER
+		<set>
+			<if test="memberPassword !=''">MEMBER_PASSWORD=#{memberPassword,jdbcType=VARCHAR}, </if>
+		</set>
+			WHERE MEMBER_EMAIL AND MEMBER_PHONE = #{memberEmail} and #{memberPhone}
+
+	</update>
+	<insert id="memberInsertOne" parameterType="com.edu.member.model.MemberDto" useGeneratedKeys="true" keyProperty="memberNo">
+		<selectKey keyProperty="memberNo" resultType="int" order="BEFORE">
+			SELECT  SEQ_NULLPROJECT_MEMBER_NO.NEXTVAL FROM DUAL
+		</selectKey>
+		INSERT INTO NULLPROJECT_MEMBER
+		VALUE(MEMBER_NO, MEMBER_EMAIL, MEMBER_PASSWORD, MEMBER_NAME,MEMBER_PHONE,MEMBER_CASH,MEMBER_ADMIN,MEMBER_STATE,MEMBER_ADDRESS,MEMBER_CATEGORY,MEMBER_CRE_DATE)
+		VALUES(#{memberNo},#{memberEmail,jdbcType=VARCHAR}, #{memberPassword,jdbcType=VARCHAR},#{memberName,jdbcType=VARCHAR}, #{memberPhone,jdbcType=VARCHAR}, 0, 1, 1, #{memberAddress,jdbcType=VARCHAR}, 'm',SYSDATE)
+	</insert>
+	<select id="memberSelectOne" parameterType="int" resultMap="memberResultMap">
+		SELECT MEMBER_NO,MEMBER_EMAIL, MEMBER_NAME, MEMBER_PHONE, MEMBER_ADDRESS, MEMBER_CASH
+		FROM NULLPROJECT_MEMBER
+		WHERE MEMBER_NO = #{memberNo}
+	</select>
+	
+	
+<!-- 	번호, 이메일, 이름, 번호, 주소 -->
+	<select id="memberSelectEmail" parameterType="memberDto" resultMap="memberResultMap">
+		SELECT MEMBER_EMAIL
+		FROM NULLPROJECT_MEMBER
+		WHERE MEMBER_EMAIL = #{memberEmail,jdbcType=VARCHAR} 
+	</select>
+
+<!-- 	회원정보 수정 -->
+	<update id="memberUpdateOne" parameterType="memberDto">
+		UPDATE NULLPROJECT_MEMBER
+		<set>
+			<if test="memberPhone !=''">MEMBER_PHONE = #{memberPhone,jdbcType=VARCHAR}, </if>
+			<if test="memberAddress !=''">MEMBER_ADDRESS = #{memberAddress,jdbcType=VARCHAR}, </if>
+			<if test="memberCash !=''">MEMBER_CASH = MEMBER_CASH + #{memberCash,jdbcType=INTEGER}, </if>
+		</set>
+			WHERE MEMBER_NO =#{memberNo}
+	</update>
+	
+
+
+<!-- 	전체 갯수 조회 -->
+	<select id="memberSelectTotalCount" parameterType="map" resultType="java.lang.Integer">
+		SELECT  COUNT(*)
+		FROM NULLPROJECT_MEMBER
+		<include refid="search"></include>
+	</select>
+
+</mapper>
+	

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+	<settings>
+		<setting name="logImpl" value="LOG4J" />
+	</settings>
+
+	<typeAliases>
+		<typeAlias type="com.edu.member.model.MemberDto"
+			alias="memberDto" />
+		<typeAlias type="com.edu.product.model.ProductDto"
+			alias="productDto" />
+		<typeAlias type="com.edu.bbs.model.BbsDto"
+			alias="bbsDto" />
+		<typeAlias type="com.edu.comment.model.CmDto"
+			alias="cmDto" />
+		<typeAlias type="com.edu.order.model.OrderDto"
+			alias="orderDto" />
+		<typeAlias type="com.edu.orderlist.model.OrderListDto"
+			alias="orderListDto" />
+		<typeAlias type="com.edu.img.model.FileDto"
+			alias="fileDto" />
+		<typeAlias type="com.edu.cart.model.CartDto"
+			alias="cartDto" />
+
+			
+			
+	</typeAliases>
+
+</configuration>

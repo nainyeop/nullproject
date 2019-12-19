@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edu.bbs">
+
+<sql id="search">
+	<choose>
+		<when test="searchOption == 'all'">
+				WHERE MEMBER_NAME LIKE '%'||#{keyword}||'%'
+				OR BOARD_TITLE LIKE '%'||#{keyword}||'%'
+		</when>
+		<otherwise>
+			WHERE ${searchOption} LIKE '%'||#{keyword}||'%'
+		</otherwise>
+	</choose>
+</sql>
+
+<resultMap type="bbsDto" id="bbsResultMap">
+	<id 	column = "BOARD_NO"              property="boardNo"/>
+	<result column = "BOARD_TITLE" 		     property="boardTitle"/>
+	<result column = "BOARD_CONTENT" 	     property="boardContent"/>
+	<result column = "MEMBER_NO" 	     	 property="memberNo"/>
+	<result column = "BOARD_CRE_DATE" 	     property="boardCreDate" javaType="java.util.Date"/>
+	<result column = "BOARD_MOD_DATE" 	     property="boardModDate" javaType="java.util.Date"/>
+	<result column = "BOARD_CATEGORY" 	     property="boardCategory"/>
+	<result column = "BOARD_STATE" 		     property="boardState"/>
+	<result column = "MEMBER_NAME"		 	 property="memberName"/>
+</resultMap>
+
+<!-- 	게시판목록조회 -->
+<select id="bbsSelectList" parameterType="map" resultMap="bbsResultMap">
+
+	SELECT BOARD_NO, BOARD_TITLE, MEMBER_NAME, BOARD_CONTENT, BOARD_CRE_DATE
+	FROM(
+	    SELECT ROWNUM RNUM, B.BOARD_NO, B.BOARD_TITLE, B.MEMBER_NAME, B.BOARD_CONTENT, B.BOARD_CRE_DATE, B.BOARD_STATE
+	    FROM(
+	        SELECT BOA.BOARD_NO, BOA.BOARD_TITLE, MEM.MEMBER_NAME, BOA.BOARD_CONTENT, BOA.BOARD_CRE_DATE, BOA.BOARD_STATE
+	                    FROM NULLPROJECT_BOARD BOA JOIN NULLPROJECT_MEMBER MEM
+	                    ON BOA.MEMBER_NO = MEM.MEMBER_NO
+						WHERE BOARD_STATE = 1
+			            ORDER BY BOARD_NO DESC
+	                    ) B
+         <include refid="search"></include>
+           )
+	WHERE RNUM BETWEEN #{start} AND #{end}
+	
+</select>
+	       
+	          
+<!-- 페이징 게시물수  -->
+<select id="bbsSelectTotalCount" parameterType="map" resultType="java.lang.Integer">
+	
+	SELECT COUNT(*)
+	FROM NULLPROJECT_BOARD BOA JOIN NULLPROJECT_MEMBER MEM
+	ON BOA.MEMBER_NO = MEM.MEMBER_NO
+	AND BOA.BOARD_STATE = 1
+	<include refid="search"></include>
+	
+</select>
+
+
+<!-- 게시물상세조회 -->
+<select id="bbsSelectOne" parameterType="map" resultMap="bbsResultMap">
+
+	SELECT BBS.BOARD_NO AS BOARD_NO, BBS.BOARD_TITLE AS BOARD_TITLE, MEM.MEMBER_NAME AS MEMBER_NAME, 
+	BBS.BOARD_CONTENT AS BOARD_CONTENT, BBS.BOARD_MOD_DATE AS BOARD_MOD_DATE, BBS.MEMBER_NO AS  MEMBER_NO
+	FROM NULLPROJECT_BOARD BBS JOIN NULLPROJECT_MEMBER MEM
+	ON BBS.MEMBER_NO = MEM.MEMBER_NO
+	WHERE BOARD_NO = #{boardNo}
+	
+</select>
+
+
+<!-- 게시물작성 -->
+<insert id="bbsInsertOne" parameterType="bbsDto">
+
+    INSERT INTO NULLPROJECT_BOARD
+	VALUE(BOARD_NO, BOARD_TITLE, MEMBER_NO, BOARD_CONTENT, 
+		BOARD_CRE_DATE, BOARD_MOD_DATE, BOARD_CATEGORY, BOARD_STATE)
+	VALUES(SEQ_NULLPROJECT_BOARD_NO.NEXTVAL, #{boardTitle},	#{memberNo}, 
+		#{boardContent}, SYSDATE, SYSDATE, 'b', 1)
+    	
+</insert>
+
+
+<!-- 게시물 수정 -->
+<update id="bbsUpdateOne" parameterType="bbsDto">
+
+	UPDATE NULLPROJECT_BOARD
+	SET BOARD_TITLE = #{boardTitle},
+    	BOARD_CONTENT = #{boardContent},
+    	BOARD_MOD_DATE = SYSDATE
+	WHERE BOARD_NO = #{boardNo}
+	
+</update>
+
+<!-- 게시물 삭제 -->
+<update id="bbsDeleteOne" parameterType="bbsDto">
+	
+	UPDATE NULLPROJECT_BOARD
+	SET BOARD_STATE = 0
+	WHERE BOARD_NO = #{boardNo}
+	
+</update>
+
+
+
+
+</mapper>

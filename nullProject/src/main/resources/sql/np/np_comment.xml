@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edu.comment">
+
+<resultMap type="cmDto" id="cmResultMap">
+	<id     column = "COMMENT_NO"        property="commentNo"/>
+	<result column = "BOARD_NO"          property="boardNo"/>      
+	<result column = "COMMENT_CRE_DATE"  property="commentCreDate" javaType="java.util.Date"/>
+	<result column = "COMMENT_WRITER"    property="commentWriter"/>
+	<result column = "COMMENT_CONTENT"   property="commentContent"/>
+	<result column = "COMMENT_STATE"     property="commentState"/>
+</resultMap>
+
+
+<!-- 댓글 조회 -->
+
+<select id="cmSelectList" parameterType="map" resultMap="cmResultMap">
+	SELECT COMMENT_CRE_DATE, COMMENT_WRITER, COMMENT_CONTENT, COMMENT_NO
+	FROM NULLPROJECT_COMMENT
+	WHERE BOARD_NO = #{boardNo}
+	AND COMMENT_STATE = 1
+</select>
+
+<!-- 댓글 추가 -->
+
+<insert id="cmInsertOne" parameterType="cmDto">
+
+	INSERT INTO NULLPROJECT_COMMENT
+	VALUE(BOARD_NO, COMMENT_NO, COMMENT_CRE_DATE, COMMENT_WRITER, COMMENT_CONTENT, COMMENT_STATE)
+	VALUES(#{boardNo}, SEQ_NULLPROJECT_COMMENT_NO.NEXTVAL, SYSDATE, #{commentWriter}, #{commentContent}, 1)
+	
+</insert>
+
+<!-- 댓글 삭제 -->
+
+<update id="cmDeleteOne" parameterType="cmDto">
+	
+	UPDATE NULLPROJECT_COMMENT
+	SET COMMENT_STATE = 0
+	WHERE COMMENT_NO = #{commentNo}
+	
+</update>
+
+<!-- 댓글 수정 -->
+
+<update id="cmUpdateOne" parameterType="cmDto">
+
+	UPDATE NULLPROJECT_COMMENT
+	SET COMMENT_CRE_DATE = SYSDATE, 
+	    COMMENT_CONTENT = #{commentContent}
+	WHERE COMMENT_NO = #{commentNo}
+	
+</update>
+
+
+
+</mapper>
+
+
+
+
+
+
